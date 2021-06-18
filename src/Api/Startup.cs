@@ -32,7 +32,8 @@ namespace Api
             services.AddSingleton<Messages>();
 
             services.AddTransient<ICommandHandler<EditPersonalInfoCommand>>(provider =>
-                                    new DatabaseRetryDecorator<EditPersonalInfoCommand>(new EditPersonalInfoCommandHandler(provider.GetService<SessionFactory>()),provider.GetService<Config>()));
+                                    new AuditLoggingDecorator<EditPersonalInfoCommand>(
+                                    new DatabaseRetryDecorator<EditPersonalInfoCommand>(new EditPersonalInfoCommandHandler(provider.GetService<SessionFactory>()),provider.GetService<Config>())));
             services.AddTransient<ICommandHandler<RegisterCommand>, RegisterCommandHandler>();
             services.AddTransient<ICommandHandler<UnRegisterCommand>, UnRegisterCommandHandler>();
             services.AddTransient<ICommandHandler<EnrollCommand>, EnrollCommandHandler>();

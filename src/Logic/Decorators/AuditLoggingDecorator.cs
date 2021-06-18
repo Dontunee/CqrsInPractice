@@ -1,5 +1,6 @@
 ﻿using CSharpFunctionalExtensions;
 using Logic.Students;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -18,7 +19,12 @@ namespace Logic.Decorators
 
         public Result Handle(TCommand command)
         {
+            string commandJson = JsonConvert.SerializeObject(command);
 
+            //Use proper logging to log to file or wherever 
+            Console.WriteLine($"Command of type {command.GetType().Name} : {commandJson}");
+
+            return _handler.Handle(command);
         }
     }
 }
