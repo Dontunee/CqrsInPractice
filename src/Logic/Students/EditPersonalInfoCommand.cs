@@ -1,4 +1,5 @@
 ﻿using CSharpFunctionalExtensions;
+using Logic.Attributes;
 using Logic.Dtos;
 using Logic.Utils;
 using System;
@@ -43,6 +44,8 @@ namespace Logic.Students
         }
     }
 
+    [DatabaseRetry]
+    [AuditLogRetry]
     public sealed class EditPersonalInfoCommandHandler : ICommandHandler<EditPersonalInfoCommand>
     {
         private readonly SessionFactory _sessionFactory;
@@ -96,19 +99,23 @@ namespace Logic.Students
         }
     }
 
+    [DatabaseRetry]
+    [AuditLogRetry]
     public sealed class RegisterCommandHandler : ICommandHandler<RegisterCommand>
     {
-        private readonly UnitOfWork _unitOfWork;
+        private readonly SessionFactory _sessionFactory;
 
-        public RegisterCommandHandler(UnitOfWork unitOfWork)
+        public RegisterCommandHandler(SessionFactory sessionFactory)
         {
-            _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+            _sessionFactory = sessionFactory ?? throw new ArgumentNullException(nameof(sessionFactory));
         }
 
 
         public Result Handle(RegisterCommand command)
         {
             var student = new Student(command.Name, command.Email);
+
+            var _unitOfWork = new UnitOfWork(_sessionFactory);
 
             if (command.FirstCourse != null && command.FirstCourseGrade != null)
             {
@@ -142,19 +149,21 @@ namespace Logic.Students
 
     }
 
-
+    [DatabaseRetry]
+    [AuditLogRetry]
     public sealed class UnRegisterCommandHandler : ICommandHandler<UnRegisterCommand>
     {
-        private readonly UnitOfWork _unitOfWork;
+        private readonly SessionFactory _sessionFactory;
 
-        public UnRegisterCommandHandler(UnitOfWork unitOfWork)
+        public UnRegisterCommandHandler(SessionFactory sessionFactory)
         {
-            _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+            _sessionFactory = sessionFactory ?? throw new ArgumentNullException(nameof(sessionFactory));
         }
 
 
         public Result Handle(UnRegisterCommand command)
         {
+            var _unitOfWork = new UnitOfWork(_sessionFactory);
             var studentRepository = new StudentRepository(_unitOfWork);
             Student student = studentRepository.GetById(command.Id);
             if (student == null)
@@ -184,17 +193,19 @@ namespace Logic.Students
 
     }
 
-
+    [DatabaseRetry]
+    [AuditLogRetry]
     public sealed class EnrollCommandHandler : ICommandHandler<EnrollCommand>
     {
-        private readonly UnitOfWork _unitOfWork;
+        private readonly SessionFactory _sessionFactory;
 
-        public EnrollCommandHandler(UnitOfWork unitOfWork)
+        public EnrollCommandHandler(SessionFactory sessionFactory)
         {
-            _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+            _sessionFactory = sessionFactory ?? throw new ArgumentNullException(nameof(sessionFactory));
         }
         public Result Handle(EnrollCommand command)
         {
+            var _unitOfWork = new UnitOfWork(_sessionFactory);
             var studentRepository = new StudentRepository(_unitOfWork);
             Student student = studentRepository.GetById(command.Id);
             if (student == null)
@@ -241,17 +252,19 @@ namespace Logic.Students
         }
     }
 
-
+    [DatabaseRetry]
+    [AuditLogRetry]
     public sealed class TransferCommandHandler : ICommandHandler<TransferCommand>
     {
-        private UnitOfWork _unitOfWork;
-        public TransferCommandHandler(UnitOfWork unitOfWork)
+        private SessionFactory _sessionFactory;
+        public TransferCommandHandler(SessionFactory sessionFactory)
         {
-            _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+            _sessionFactory = sessionFactory ?? throw new ArgumentNullException(nameof(sessionFactory));
         }
 
         public Result Handle(TransferCommand command)
         {
+            var _unitOfWork = new UnitOfWork(_sessionFactory);
             var studentRepository = new StudentRepository(_unitOfWork);
             Student student = studentRepository.GetById(command.Id);
             if (student == null)
@@ -296,18 +309,21 @@ namespace Logic.Students
 
     }
 
+    [DatabaseRetry]
+    [AuditLogRetry]
     public sealed class DisenrollCommandHandler : ICommandHandler<DisenrollCommand>
     {
 
-        private readonly UnitOfWork _unitOfWork;
+        private readonly SessionFactory _sessionFactory;
 
-        public DisenrollCommandHandler(UnitOfWork unitOfWork)
+        public DisenrollCommandHandler(SessionFactory sessionFactory)
         {
-            _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+            _sessionFactory = sessionFactory ?? throw new ArgumentNullException(nameof(sessionFactory));
         }
 
         public Result Handle(DisenrollCommand command)
         {
+            var _unitOfWork = new UnitOfWork(_sessionFactory);
             var studentRepository = new StudentRepository(_unitOfWork);
             Student student = studentRepository.GetById(command.Id);
             if (student == null)
@@ -343,17 +359,20 @@ namespace Logic.Students
         }
     }
 
+    [DatabaseRetry]
+    [AuditLogRetry]
     public sealed class GetListQueryHandler : IQueryHandler<GetListQuery, List<StudentDto>>
     {
-        private readonly UnitOfWork _unitOfWork;
+        private readonly SessionFactory _sessionFactory;
 
-        public GetListQueryHandler(UnitOfWork unitOfWork)
+        public GetListQueryHandler(SessionFactory sessionFactory)
         {
-            _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+            _sessionFactory = sessionFactory ?? throw new ArgumentNullException(nameof(sessionFactory));
         }
 
         public List<StudentDto> Handle(GetListQuery query)
         {
+            var _unitOfWork = new UnitOfWork(_sessionFactory);
             return new StudentRepository(_unitOfWork).
                     GetList(query.EnrolledIn, query.NumberOfCourses)
                         .Select(x => ConvertToDto(x)).ToList();
