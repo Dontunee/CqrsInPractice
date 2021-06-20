@@ -1,9 +1,11 @@
-﻿using Logic.Attributes;
+﻿using Dapper;
+using Logic.Attributes;
 using Logic.Dtos;
 using Logic.Students;
 using Logic.Utils;
 using System;
 using System.Collections.Generic;
+using System.Data.SqlClient;
 using System.Linq;
 using System.Text;
 
@@ -26,35 +28,102 @@ namespace Logic.Queries
         [AuditLogRetry]
         internal sealed class GetListQueryHandler : IQueryHandler<GetListQuery, List<StudentDto>>
         {
-            private readonly SessionFactory _sessionFactory;
+            private readonly ConnectionString _connectionString;
 
-            public GetListQueryHandler(SessionFactory sessionFactory)
+            public GetListQueryHandler(ConnectionString connectionString)
             {
-                _sessionFactory = sessionFactory ?? throw new ArgumentNullException(nameof(sessionFactory));
+                _connectionString = connectionString ?? throw new ArgumentNullException(nameof(connectionString));
             }
 
             public List<StudentDto> Handle(GetListQuery query)
             {
-                var _unitOfWork = new UnitOfWork(_sessionFactory);
-                return new StudentRepository(_unitOfWork).
-                        GetList(query.EnrolledIn, query.NumberOfCourses)
-                            .Select(x => ConvertToDto(x)).ToList();
+
+                string sql = @"
+                                   SELECT s.*, e.Grade, c.Name CourseName, c.Credits
+                                   FROM dbo.Students
+                                   LEFT JOIN (
+                                   SELECT e.StudentID, COUNT(*) Number
+                                   FROM dbo.Enrollment e
+                                   GROUP BY e.StudentID) t ON s.StudentID = t.StudentID
+                                   LEFT JOIN dbo.Enrollment e ON e.StudentID = s.StudentID
+                                   LEFT JOIN dbo.Course c ON e.CourseID = c.CourseID
+                                   WHERE (c.Name = @Course OR @Course IS NULL)
+                                   AND (ISNULL(t.Number, 0) = @Number OR @Number IS NULL)
+                                   ORDER BY s.StudentID ASC";
+
+                using (SqlConnection connection = new SqlConnection(_connectionString.Value))
+                {
+
+                    //Execute the query using filteration parameter from the query object
+                    List<StudentInDb> students = connection
+                                                    .Query<StudentInDb>(sql, new
+                                                    {
+                                                        Course = query.EnrolledIn,
+                                                        Number = query.NumberOfCourses
+                                                    }).ToList();
+
+                    //Extract all identifiers out of the result 
+                    List<long> ids = students.GroupBy(x => x.StudentID)
+                                       .Select(X => X.Key)
+                                        .ToList();
+
+                    var result = new List<StudentDto>();
+
+                    foreach (long id in ids)
+                    {
+                        //select all the data from the collection 
+                        List<StudentInDb> data = students.Where(x => x.StudentID == id).ToList();
+
+                        //Transform it into a dto
+
+                        var dto = new StudentDto
+                        {
+                            Id = data[0].StudentID,
+                            Name = data[0].Name,
+                            Email = data[0].Email,
+                            Course1 = data[0].CourseName,
+                            Course1Credits = data[0].Credits,
+                            Course1Grade = data[0].Grade.ToString()
+                        };
+
+                        if (data.Count > 1)
+                        {
+                            dto.Course2 = data[1].CourseName;
+                            dto.Course2Credits = data[1].Credits;
+                            dto.Course2Grade = data[1].Grade.ToString();
+                        }
+
+                        //Add dto to the output list
+                        result.Add(dto);
+                    }
+
+                    return result;
+
+                }
             }
 
-            private StudentDto ConvertToDto(Student student)
+       
+        }
+
+
+        private class StudentInDb
+        {
+            public readonly long StudentID;
+            public readonly string Name;
+            public readonly string Email;
+            public readonly Grade? Grade;
+            public readonly string CourseName;
+            public readonly int? Credits;
+
+            public StudentInDb(long studentID, string name, string email, 
+                Grade? grade, string courseName, int? credits)
             {
-                return new StudentDto
-                {
-                    Id = student.Id,
-                    Name = student.Name,
-                    Email = student.Email,
-                    Course1 = student.FirstEnrollment?.Course?.Name,
-                    Course1Grade = student.FirstEnrollment?.Grade.ToString(),
-                    Course1Credits = student.FirstEnrollment?.Course?.Credits,
-                    Course2 = student.SecondEnrollment?.Course?.Name,
-                    Course2Grade = student.SecondEnrollment?.Grade.ToString(),
-                    Course2Credits = student.SecondEnrollment?.Course?.Credits,
-                };
+                StudentID = studentID;
+                Name = name ?? throw new ArgumentNullException(nameof(name));
+                Email = email ?? throw new ArgumentNullException(nameof(email));
+                Grade = grade;
+                CourseName = courseName ?? throw new ArgumentNullException(nameof(courseName));
+                Credits = credits;
             }
         }
     }

@@ -25,9 +25,12 @@ namespace Api
 
 
             var config = new Config(3); //get from appsettings in real scenario
+            var connectionString = new ConnectionString(Configuration["ConnectionString"]);
 
+            
             services.AddSingleton(config);
-            services.AddSingleton(new SessionFactory(Configuration["ConnectionString"]));
+            services.AddSingleton(connectionString);
+            services.AddSingleton<SessionFactory>();
             services.AddSingleton<Messages>();
             services.AddHandlers();
             
