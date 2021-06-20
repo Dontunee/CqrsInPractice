@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using CSharpFunctionalExtensions;
+using Logic.Commands;
 using Logic.Dtos;
+using Logic.Queries;
 using Logic.Students;
 using Logic.Utils;
 using Microsoft.AspNetCore.Mvc;
